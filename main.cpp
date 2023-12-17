@@ -3,12 +3,15 @@
 #include<GLFW/glfw3.h>
 #include "src/shaders/Shader.hpp"
 #include "src/textures/stb_image.h"
+#include "src/camera/Camera.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+
 
 void initGLFW()
 {
@@ -37,12 +40,81 @@ GLFWwindow* createWindowGFLW(int width, int height, const char* windowName)
     return window;
 }
 
+
+
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+
+
+float pitch = 0;
+float yaw = 0;
+float fov = 45.0f;
+    
+    // Camera
+Camera mainCamera;
+
+bool firstMouse = true;
+unsigned int windowWidth = 1920;
+unsigned int windowHeight = 1080;
+
+float lastX = windowWidth / 2;
+float lastY = windowHeight / 2;
+
+
+    // Time
+float deltaTime = 0.0f;	// Time between current frame and last frame
+float lastFrame = 0.0f; // Time of last frame
+
+void mouse_callback(GLFWwindow* window, double xInput, double yInput)
+{
+    float xPos = static_cast<float>(xInput);
+    float yPos = static_cast<float>(yInput);
+    if (firstMouse)
+    {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+    // calculate the offset movement between the last and current frame
+    float xoffset = xPos - lastX;
+    float yoffset = lastY - yPos; // reversed since y-coordinates range from bottom to top
+
+    lastX = xPos;
+    lastY = yPos;
+
+    mainCamera.ProcessMouseMovement(xoffset, yoffset);
+    
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    mainCamera.ProcessMouseScroll(yoffset);
+}
+
 void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
         glfwSetWindowShouldClose(window, true);
-    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        mainCamera.move(FORWARD, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        mainCamera.move(BACKWARD, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        mainCamera.move(LEFT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        mainCamera.move(RIGHT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        mainCamera.move(DOWN, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        mainCamera.move(UP, deltaTime);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -53,17 +125,18 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 int main()
 {
-
-
-
     // initialize GLFW 
     initGLFW();
 
     // Create a GLFWwindow with x and y pixels defined
-    unsigned int windowWidth = 1920;
-    unsigned int windowHeight = 1080;
+   
 
     GLFWwindow* window = createWindowGFLW(windowWidth, windowHeight, "Learn OpenGL Window");
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
 
     // Error check if window creation fails
     if (!window) {
@@ -277,21 +350,19 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model,-(float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        /*glm::mat4 view = glm::mat4(1.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));*/
 
         glm::mat4 projection;
-        projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(mainCamera.getCameraSettings().zoom), 16 / 9.0f, 0.1f, 100.0f);
+
 
 
         // activating the shader and telling it what our projection,model and view matrix is.
         firstShader.activate();
         firstShader.setMat4("projection", projection);
         firstShader.setMat4("model", model);
-        firstShader.setMat4("view", view);
-
         
-
         // Bind the VAO before the draw call
         glBindVertexArray(VAO);
         for (int i = 0; i < 10; i++)
@@ -314,16 +385,28 @@ int main()
         }
         // The first param says we want to draw triangles, the second says to draw 6 indices, third is the type of indices
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            // When defining a camera, we need the position, the direction its looking at (target)
+            // a vector point to the right and a vector pointing upwards
+
+        glm::mat4 view;
+
+        view = mainCamera.getViewMatrix();
+        firstShader.setMat4("view", view);
+
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         // Unbind the VAO after the draw cal
-
         glBindVertexArray(0);
-
 
         // Swap the back buffer with the front buffer
         glfwSwapBuffers(window);
 
         // Take care of all GLFW events
         glfwPollEvents();
+       
     }
 
         // Delete window before ending the program. We don't want it to linger around

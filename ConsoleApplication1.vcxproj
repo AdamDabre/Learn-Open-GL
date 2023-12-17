@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\camera\Camera.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\textures\stb_image.cpp" />
     <ClCompile Include="src\textures\Texture.cpp" />
@@ -147,6 +148,7 @@
     <None Include="shaders\secondary.frag" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\camera\Camera.hpp" />
     <ClInclude Include="src\shaders\Shader.hpp" />
     <ClInclude Include="src\textures\stb_image.h" />
     <ClInclude Include="src\textures\Texture.h" />
